@@ -1,0 +1,32 @@
+Hi Bret,
+
+If you are using the PLC as a slave device to receive Modbus commands from a Master, then you don't need to do anything except ensure that the baud settings match those of the master. By default, all of the PLC com ports are set for 38,400bps, 8 data bits, no parity, and 1 stop bit. If you need to change this, you can use the SETBAUD command per the example and table of settings in the FMD1616-10 user manual in section 14.4
+
+https://triplc.com/documents/FMD1616-10-UserManual.pdf
+
+The PLC will automatically handle the response to the Modbus command sent by the master. Section 14.7 of the manual has more details about Modbus, but these are the commands supported as a slave:
+
+
+
+Best Regards,
+
+
+
+Hi Bret,
+
+Just to clarify, WRITEMB2 is a command used in the PLC program when the PLC is a master device, in which case it is writing data to the Modbus scanner. I'm assuming that is not what you want.
+
+If the Modbus scanner is the master, then the PLC shouldn't be running WRITEMB2. You don't need PLC code in order for an external master device to communicate via Modbus as the PLC will respond automatically without any programming. The only exception is if the PLC serial port and Modbus scanner serial port have different baud settings. Refer to my email below for details on changing the PLC baud rate.
+
+In order to get data from your scanner into the PLC when the scanner is the master, it will need to write to the PLCs Modbus registers. Typically data is stored in the DM variables that are shown at the bottom of the below Modbus mapping table screenshot. The full table is in section 14.7.1 of the user manual.
+
+In order to map a 16-bit value from the scanner to DM[1] in the PLC, the scanner needs to write to Modbus register 41001 (offset register 1000) in the PLC using Modbus Function 06 or 16. Once the scanner writes the data to PLC registers, the PLC program can use it for other purposes in a TBASIC custom function (where the WRITEMB2 is currently running or another function elsewhere in the program). There are 1000 DM registers total in the FMD1616-10 (unless you have a FRAM-RTC module that expands the memory to 4000 registers) and they are simply addressed with an index from 1 to 1000 in square brackets [].
+
+Random example:
+
+DM[1] = DM[1] *1000/4096
+
+
+Jason will first need to verify that the connection is setup to match the PLC Com settings. Below is what I used with the Modbus Poll software.
+Then the Modbus function and PLC registers need to be configured for reading from the desired DMs. The Slave ID (PLC ID) needs to match what is set in the PLC, which is 1 by default. Offset address 1015 is the starting address to read DM[16].
+With these settings, the Modbus Poll software is correctly reading the data I have in my test PLC:
